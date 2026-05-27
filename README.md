@@ -139,7 +139,7 @@ In the *New connection* dialog, set:
 
 | Field        | Value |
 |--------------|-------|
-| Profile      | `Oracle EE` (if you have Diagnostic Pack) or `Oracle SE` |
+| Profile      | `OracleEE10g` (recommended for 19c/21c/23ai) — see note below |
 | JDBC driver  | absolute path to `ojdbc11.jar` (e.g. `/home/<user>/lib/ojdbc11.jar`) |
 | Driver class | `oracle.jdbc.driver.OracleDriver` |
 | URL          | see formats below |
@@ -152,7 +152,27 @@ JDBC URL formats:
 - **OCI PDB (private subnet service):** `jdbc:oracle:thin:@<public_ip>:1521/<pdb_name>.<subnet_dns>.<vcn_dns>.oraclevcn.com`
 - **Autonomous DB (TLS + wallet):** `jdbc:oracle:thin:@<tnsname>?TNS_ADMIN=/path/to/wallet`
 
-> `V$ACTIVE_SESSION_HISTORY` is part of the Oracle Diagnostic Pack and requires the corresponding license. Use the `Oracle SE` profile if your DB is Standard Edition or you don't hold ODP.
+> **Profile choice:** `OracleEE` assumes `V$ACTIVE_SESSION_HISTORY` exposes a `SQL_OPNAME` column, but Oracle 12c+ only provides `SQL_OPCODE`. `OracleEE10g` derives `SQL_OPNAME` by joining `V$ACTIVE_SESSION_HISTORY` with `AUDIT_ACTIONS` and works correctly on 10g through 23ai. Use `OracleSE` only if your database is Standard Edition or you don't have the Oracle Diagnostic Pack license (`V$ACTIVE_SESSION_HISTORY` is part of ODP).
+
+#### CafeDatabase course lab
+
+If you are a CafeDatabase student, your assigned PDB on the shared Oracle 23ai lab follows the pattern `MASTERXX` (where `XX` is the number your instructor gave you, e.g. `01`, `02`, ...). Use these exact values:
+
+| Field        | Value |
+|--------------|-------|
+| Profile      | `OracleEE10g` |
+| JDBC driver  | `/home/<user>/lib/ojdbc11.jar` |
+| Driver class | `oracle.jdbc.driver.OracleDriver` |
+| URL          | `jdbc:oracle:thin:@143.47.35.135:1521/masterXX.sub09291555070.vcn23ai.oraclevcn.com` |
+| User / Pass  | the credentials provided by your instructor |
+
+Replace `masterXX` in the URL with your assigned number in lowercase (e.g. `master03`). Your DB user must hold the privileges needed to read `V$ACTIVE_SESSION_HISTORY` and `AUDIT_ACTIONS`; the lab account already has them.
+
+Quick connectivity check from the shell before opening ASH Viewer:
+
+```shell
+nc -vz 143.47.35.135 1521
+```
 
 ### 6. Linux desktop launcher (optional)
 
