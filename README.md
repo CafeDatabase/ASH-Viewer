@@ -4,11 +4,14 @@ ASH Viewer provides graphical view of active session history data within the dat
 
 Supported databases: Oracle, PostgreSQL
 
+> **Fork notice** — This is the [CafeDatabase](https://github.com/cafedatabase) fork of [akardapolov/ASH-Viewer](https://github.com/akardapolov/ASH-Viewer), maintained for student use. It adds JDK 21 build compatibility (Lombok 1.18.34) and automates the `bc-fips` jar placement during `mvn package`. See [For students](#for-students) for a step-by-step walkthrough.
+
 ## Table of contents
 
 - [Quick start](#quick-start)
 - [How it works](#how-it-works)
 - [Build](#build)
+- [For students](#for-students)
 - [Security](#security)
 - [Bugs and feature requests](#bugs-and-feature-requests)
 - [Downloads](#downloads)
@@ -83,6 +86,92 @@ To compile the application into an executable jar file, do the following:
     ```
 
 An executable jar file like `ashv-<VERSION>-SNAPSHOT-jar-with-dependencies.jar` will be located at the relative path ashv/target
+
+[Return to Table of Contents](#table-of-contents)
+
+## For students
+
+This fork ships two improvements over upstream that matter for first-time builders:
+
+- Lombok was bumped to 1.18.34, so the project compiles on **JDK 16+** (tested with JDK 21). Upstream's 1.18.24 fails on JDK 16+ with `NoSuchFieldError: JCTree$JCImport.qualid`.
+- The `bc-fips` jar is copied to `ashv/target/` automatically during `mvn package`. The fat jar's manifest declares `Class-Path: bc-fips-1.0.2.4.jar`, which the JVM resolves relative to the jar's own directory — without that file the app crashes at startup with `NoClassDefFoundError: BouncyCastleFipsProvider`.
+
+### 1. Prerequisites
+
+- JDK 11 or higher (JDK 21 verified)
+- Maven 3.6+
+- Git
+
+### 2. Clone and build
+
+```shell
+git clone https://github.com/cafedatabase/ASH-Viewer.git
+cd ASH-Viewer
+mvn clean package -DskipTests
+```
+
+After the build, in `ashv/target/` you should see:
+
+- `ashv-4.0-SNAPSHOT-jar-with-dependencies.jar` — runnable fat jar (~26 MB)
+- `bc-fips-1.0.2.4.jar` — FIPS crypto provider, **must stay next to** the fat jar
+
+### 3. Download the Oracle JDBC driver
+
+The Oracle JDBC driver is not bundled (Oracle license). Download it once into a stable location of your choice:
+
+```shell
+mkdir -p ~/lib
+mvn dependency:get -Dartifact=com.oracle.database.jdbc:ojdbc11:23.5.0.24.07 -Dtransitive=false
+cp ~/.m2/repository/com/oracle/database/jdbc/ojdbc11/23.5.0.24.07/ojdbc11-23.5.0.24.07.jar ~/lib/ojdbc11.jar
+```
+
+`ojdbc11` works on JDK 11–21 and connects to Oracle 19c, 21c and 23ai databases.
+
+### 4. Run
+
+```shell
+java -jar ashv/target/ashv-4.0-SNAPSHOT-jar-with-dependencies.jar
+```
+
+### 5. Connection settings (Oracle)
+
+In the *New connection* dialog, set:
+
+| Field        | Value |
+|--------------|-------|
+| Profile      | `Oracle EE` (if you have Diagnostic Pack) or `Oracle SE` |
+| JDBC driver  | absolute path to `ojdbc11.jar` (e.g. `/home/<user>/lib/ojdbc11.jar`) |
+| Driver class | `oracle.jdbc.driver.OracleDriver` |
+| URL          | see formats below |
+| User / Pass  | your DB credentials |
+
+JDBC URL formats:
+
+- **SID:** `jdbc:oracle:thin:@host:1521:SID`
+- **Service name:** `jdbc:oracle:thin:@host:1521/service.name`
+- **OCI PDB (private subnet service):** `jdbc:oracle:thin:@<public_ip>:1521/<pdb_name>.<subnet_dns>.<vcn_dns>.oraclevcn.com`
+- **Autonomous DB (TLS + wallet):** `jdbc:oracle:thin:@<tnsname>?TNS_ADMIN=/path/to/wallet`
+
+> `V$ACTIVE_SESSION_HISTORY` is part of the Oracle Diagnostic Pack and requires the corresponding license. Use the `Oracle SE` profile if your DB is Standard Edition or you don't hold ODP.
+
+### 6. Linux desktop launcher (optional)
+
+To launch ASH Viewer from your application menu, create `~/.local/share/applications/ash-viewer.desktop`:
+
+```ini
+[Desktop Entry]
+Type=Application
+Name=ASH Viewer
+Comment=Graphical Active Session History viewer for Oracle databases
+Exec=/usr/bin/java -jar /home/<user>/ASH-Viewer/ashv/target/ashv-4.0-SNAPSHOT-jar-with-dependencies.jar
+Path=/home/<user>/ASH-Viewer
+Icon=/home/<user>/ASH-Viewer/media/main.png
+Terminal=false
+Categories=Development;Database;Java;
+StartupWMClass=Main
+```
+
+Replace `<user>` with your username. Validate with `desktop-file-validate ~/.local/share/applications/ash-viewer.desktop`.
 
 [Return to Table of Contents](#table-of-contents)
 
